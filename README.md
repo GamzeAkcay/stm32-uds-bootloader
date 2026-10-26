@@ -8,7 +8,7 @@ A CAN bootloader for STM32F407 implementing UDS (ISO 14229-1) over ISO-TP (ISO 1
 
 Field firmware updates over CAN are standard in automotive ECUs. The interesting engineering problem isn't "send bytes over CAN" — it's segmenting a multi-KB image into 8-byte CAN frames correctly, running a stateful diagnostic session on top of that, writing flash safely, and handing off execution to new code without the hardware's own caches lying to you. This project builds that path by hand: ISO-TP segmentation/reassembly, a UDS service state machine, a flash driver, and CRC32-based integrity verification.
 
-It follows my earlier [vehicle CAN bus simulator](LINK_TO_YOUR_CAN_SIMULATOR_REPO) project (STM32 + Raspberry Pi, SocketCAN).
+It follows my earlier [vehicle CAN bus simulator](https://github.com/GamzeAkcay/stm32-can-node) project (STM32 + Raspberry Pi, SocketCAN).
 
 ## Architecture
 
@@ -120,17 +120,21 @@ Throughput is low relative to the 500 kbps bus — expected, since each ~64-byte
 ## Roadmap
 
 - [x] Linker scripts for bootloader and application partitions
-- [x] ISO-TP receive/transmit (hand-written, unit-tested)
+- [x] ISO-TP receive (hand-written, unit-tested) and single-frame transmit
 - [x] UDS services (0x10, 0x31, 0x34, 0x36, 0x37, 0x11)
 - [x] Flash erase/write driver
 - [x] CRC32 verification and metadata handling
 - [x] Python update client
+- [x] Measurements — throughput/timing (5 runs)
 - [ ] Safe, reliable jump from bootloader to application — **works once, not reproducible**
 - [ ] Power-loss recovery — mechanism exists, untested
+- [ ] UDS session manager with S3 timeout and 0x3E TesterPresent
+- [ ] ISO-TP multi-frame transmit
+- [ ] Throughput: measure round-trip latency and increase TransferData block size
 - [ ] Unit tests and CI beyond ISO-TP
-- [x] Measurements — throughput/timing (5 runs)
+- [ ] Interoperability test against Linux can-isotp and udsoncan
 - [ ] Demo video
-- [ ] Optional: signature verification (ECDSA) instead of CRC only
+- [ ] 0x29 Authentication with ECDSA signature verification
 
 ## Repository layout
 
