@@ -467,15 +467,25 @@ void JumpToApplication(void) {
 		return;
 	}
 
+	/* Değerleri en başta oku, stack değişmeden önce */
+	uint32_t appStack = *(volatile uint32_t*) APP_ADDRESS;
+	uint32_t appEntry = *(volatile uint32_t*) (APP_ADDRESS + 4U);
+
 	__disable_irq();
+
 	HAL_CAN_DeInit(&hcan1);
+	HAL_RCC_DeInit();                /* SysTick'i yeniden açar, bu yüzden önce */
+
+	/* SysTick'i en son kapat ve bekleyen kesmesini temizle */
 	SysTick->CTRL = 0;
+	SysTick->LOAD = 0;
+	SysTick->VAL  = 0;
+	SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk;
+
 	for (uint8_t i = 0; i < 8; i++) {
 		NVIC->ICER[i] = 0xFFFFFFFFU;
 		NVIC->ICPR[i] = 0xFFFFFFFFU;
 	}
-	HAL_RCC_DeInit();
-	HAL_InitTick(TICK_INT_PRIORITY);
 
 	__HAL_FLASH_INSTRUCTION_CACHE_DISABLE();
 	__HAL_FLASH_DATA_CACHE_DISABLE();
@@ -484,14 +494,20 @@ void JumpToApplication(void) {
 	__HAL_FLASH_INSTRUCTION_CACHE_ENABLE();
 	__HAL_FLASH_DATA_CACHE_ENABLE();
 
-	uint32_t appStack = *(volatile uint32_t*) APP_ADDRESS;
-	uint32_t appEntry = *(volatile uint32_t*) (APP_ADDRESS + 4U);
-
-	__set_MSP(appStack);
 	SCB->VTOR = APP_ADDRESS;
+	__DSB();
+	__ISB();
+
 	__enable_irq();
 
-	((pFunction) appEntry)();
+	/* Stack pointer'ı ayarla ve atla. Arada stack'e erişilmez. */
+	__asm volatile (
+		"msr msp, %0 \n"
+		"bx  %1      \n"
+		:
+		: "r" (appStack), "r" (appEntry)
+		: "memory"
+	);
 }
 /*USER CODE END 4 */
 
