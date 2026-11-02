@@ -76,7 +76,7 @@ After `__set_MSP()`, the compiler restored the function's saved registers from t
 
 **Verification (application loaded via ST-Link).**
 - Direct jump test (metadata check bypassed): 15/15 resets booted the application.
-- Normal boot with CRC32 metadata validation: 5/5 resets booted the application.
+- Normal boot with CRC32 metadata validation: 15/15 resets booted the application.
 - Metadata with a wrong CRC32: the bootloader correctly refused to jump.
 
 ## Hardware
@@ -142,7 +142,7 @@ Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN 
 | Firmware delivered over CAN          | 36 KB, verified via CRC32 (`0x40CD96D5`) |
 | Update time (mean ± std dev, n=5)    | 8.28 s ± 0.10 s                |
 | Throughput (mean, n=5)               | 4.36 KB/s                      |
-| Boot jump                            | 15/15 direct, 5/5 with CRC validation (ST-Link loaded) |
+| Boot jump                            | 15/15 direct, 15/15 with CRC validation (ST-Link loaded) |
 | Recovery success after power loss    | Not tested                     |
 
 Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame), but each ~64-byte TransferData block waits for two round trips (Flow Control and the positive response) rather than streaming continuously. Larger blocks should reduce this significantly; the latency on the tester side has not been measured yet.
