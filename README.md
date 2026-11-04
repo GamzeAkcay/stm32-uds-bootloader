@@ -158,7 +158,7 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 - [x] Measurements — throughput/timing (5 runs)
 - [x] Reliable jump from bootloader to application — root cause found and fixed
 - [ ] End-to-end retest with CAN-delivered images
-- [ ] Power-loss recovery — mechanism exists, untested
+- [ ] Power-loss test: cut power after erase, during data transfer and before transfer exit; document bootloader behavior
 - [ ] Respond with NRC 0x11 for unsupported services
 - [ ] UDS session manager with S3 timeout and 0x3E TesterPresent
 - [ ] Response pending (NRC 0x78) during flash erase, P2/P2* timing
