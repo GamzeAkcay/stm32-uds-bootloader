@@ -2,7 +2,7 @@
 
 A CAN bootloader for STM32F407 implementing UDS (ISO 14229-1) over ISO-TP (ISO 15765-2) for firmware updates, written from scratch (no third-party ISO-TP/UDS libraries).
 
-> **Status:** the firmware update pipeline works end-to-end on real hardware, and the previously unreliable boot jump has been root-caused and fixed (see [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix)). A repeated end-to-end test with CAN-delivered images is still pending.
+> **Status:** the firmware update pipeline works end-to-end on real hardware, and the previously unreliable boot jump has been root-caused and fixed (see [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix)). Power-loss behavior was tested in three scenarios (see [Power-loss testing](#power-loss-testing)). A larger repeated end-to-end test with CAN-delivered images is still pending.
 
 ## Why this project
 
@@ -79,6 +79,25 @@ After `__set_MSP()`, the compiler restored the function's saved registers from t
 - Normal boot with CRC32 metadata validation: 15/15 resets booted the application.
 - Metadata with a wrong CRC32: the bootloader correctly refused to jump.
 
+## Power-loss testing
+
+Tested on 2026-11-13: STM32F407G-DISC1 powered through its ST-LINK USB cable, update client on a Raspberry Pi 4B (CAN, 500 kbit/s), 36 KB application image. "Power cut" means unplugging the board's USB cable while the update client was running. Each scenario was run once.
+
+| # | Scenario | Type | Result |
+|---|----------|------|--------|
+| 1 | Power cut during flash erase (`0x34` RequestDownload) | real | After reconnecting, the bootloader did not jump and stayed in the bootloader. The next update completed and the application started. |
+| 2 | Power cut in the middle of the transfer (around block 256 of 576, `0x36`) | real | Same as scenario 1. |
+| 3 | Complete image written, update client stopped before the CRC verification routine (`0x31`) | simulated | The bootloader did not jump, although the flash content was byte-identical to a previously valid image. |
+
+A full update after each case succeeded and the application started (LED blinking).
+
+Limits of these tests:
+
+- Each scenario was run once, with a manual cable pull. This is not a statistical result.
+- Scenario 3 is a simulation (the client was stopped), not a real power cut.
+- A power cut during the three metadata word writes was not tested on hardware. The write order (size, CRC, magic last) should leave invalid metadata in every such case, but this is a design property, not a measured result.
+- The jump to the application was confirmed by an LED only.
+
 ## Hardware
 
 ![Hardware setup](docs/hardware_setup.jpg)
@@ -113,11 +132,11 @@ This is the hard part of a bootloader — getting a real binary across CAN intac
 
 ## Known issues
 
-**End-to-end retest pending.** The boot jump fix has been verified with the application loaded via ST-Link. Repeated tests with CAN-delivered images will follow.
+**End-to-end retest is small so far.** The boot jump fix was verified 15/15 with the application loaded via ST-Link. With CAN-delivered images, three updates (including the recoveries after power cuts) booted the application; a repeated test of 10 or more runs is still pending.
 
-**Power-loss recovery is unverified.** The mechanism exists (magic word written last) but has never been tested against an actual power cut mid-transfer.
+**Power-loss behavior is only partly tested.** Three scenarios were run once each (see [Power-loss testing](#power-loss-testing)). A power cut during the three metadata word writes themselves has not been tested on hardware.
 
-**Throughput is limited by round trips.** Each ~64-byte TransferData block waits for Flow Control and a positive response, so most of the time is spent waiting rather than transmitting. See [Results](#results).
+**Throughput is far below the bus capacity.** The cause is not yet established. The tester pauses 1 ms after every consecutive frame (9 per 64-byte block, about 9 of the roughly 14 ms measured per block), and STmin/BlockSize are not implemented. This has not yet been verified by removing the pause. See [Results](#results).
 
 ## Testing
 
@@ -143,9 +162,9 @@ Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN 
 | Update time (mean ± std dev, n=5)    | 8.28 s ± 0.10 s                |
 | Throughput (mean, n=5)               | 4.36 KB/s                      |
 | Boot jump                            | 15/15 direct, 15/15 with CRC validation (ST-Link loaded) |
-| Recovery success after power loss    | Not tested                     |
+| Recovery after power loss            | 3 scenarios, run once each: no jump to an incomplete image, recovery update succeeded (see [Power-loss testing](#power-loss-testing)) |
 
-Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame), but each ~64-byte TransferData block waits for two round trips (Flow Control and the positive response) rather than streaming continuously. Larger blocks should reduce this significantly; the latency on the tester side has not been measured yet.
+Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame). The tester currently pauses 1 ms after every consecutive frame; with 9 consecutive frames per 64-byte block that is about 9 ms of the roughly 14 ms measured per block, so larger blocks alone would not remove it. This has not yet been verified by removing the pause, so the cause is still open.
 
 ## Roadmap
 
@@ -157,14 +176,14 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 - [x] Python update client
 - [x] Measurements — throughput/timing (5 runs)
 - [x] Reliable jump from bootloader to application — root cause found and fixed
-- [ ] End-to-end retest with CAN-delivered images
-- [ ] Power-loss test: cut power after erase, during data transfer and before transfer exit; document bootloader behavior
+- [ ] End-to-end retest with CAN-delivered images (10 or more runs)
+- [x] Power-loss test: cut power during erase and during data transfer; simulated stop before CRC verification (see [Power-loss testing](#power-loss-testing))
 - [ ] Respond with NRC 0x11 for unsupported services
 - [ ] UDS session manager with S3 timeout and 0x3E TesterPresent
 - [ ] Response pending (NRC 0x78) during flash erase, P2/P2* timing
 - [ ] Standard programming sequence and 0x27 SecurityAccess
 - [ ] ISO-TP multi-frame transmit
-- [ ] Throughput: measure round-trip latency and increase TransferData block size
+- [ ] Throughput: remove the per-frame pause in the tester, measure round-trip latency, then increase TransferData block size
 - [ ] Unit tests and CI beyond ISO-TP
 - [ ] Interoperability test against Linux can-isotp and udsoncan
 - [ ] Demo video
