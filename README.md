@@ -147,7 +147,7 @@ This is the hard part of a bootloader — getting a real binary across CAN intac
 
 ## Results
 
-Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN bus at 500 kbps, image size 36864 bytes (36 KB, CRC32 `0x40CD96D5`), 5 consecutive update runs (flash erased and rewritten each time).
+Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN bus at 500 kbps, image size 36864 bytes (36 KB, CRC32 `0x40CD96D5`), 5 consecutive update runs per configuration (flash erased and rewritten each time). The per-run table below is the first configuration: tester with a 1 ms pause after each consecutive frame.
 
 | Run | Time (s) | Throughput (KB/s) |
 |-----|----------|--------------------|
@@ -160,8 +160,8 @@ Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN 
 | Metric                              | Value                          |
 |--------------------------------------|--------------------------------|
 | Firmware delivered over CAN          | 36 KB, verified via CRC32 (`0x40CD96D5`) |
-| Update time, with 1 ms pause per consecutive frame (mean +- std dev, n=5) | 8.28 s +- 0.10 s |
-| Update time, pause removed (mean +- std dev, n=5) | 4.46 s +- 0.05 s |
+| Update time, with 1 ms pause per consecutive frame (mean ± std dev, n=5) | 8.28 s ± 0.10 s |
+| Update time, pause removed (mean ± std dev, n=5) | 4.46 s ± 0.05 s |
 | Throughput, with pause (mean, n=5) | 4.36 KB/s |
 | Throughput, pause removed (mean, n=5) | 8.10 KB/s |
 | Boot jump                            | 15/15 direct, 15/15 with CRC validation (ST-Link loaded) |
