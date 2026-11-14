@@ -113,9 +113,10 @@ Limits of these tests:
 # Bootloader and application are both STM32CubeIDE projects
 # Build bootloader/ and app/ separately in CubeIDE (or via headless make)
 
-# Update client (Raspberry Pi) — host/update_client.py, to be added to this repository
+# Update client (Raspberry Pi, requires python-can): bring up SocketCAN, then run the client from host/
+sudo ip link set can0 up type can bitrate 500000
 cd host
-python3 update_client.py   # delivers app/Debug/stm32_app.bin over CAN
+python3 update_client.py <path/to/stm32_app.bin> [can0]   # waits up to 30 s for the bootloader (press RESET if needed)
 ```
 
 ## Verified so far
@@ -194,7 +195,7 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 ```
 bootloader/   bootloader firmware (ISO-TP, UDS, flash driver, boot logic)
 app/          example application (updatable firmware)
-host/         Python update client (update_client.py, to be added)
+host/         Python update client (update_client.py)
 docs/         diagrams, screenshots
 ```
 
