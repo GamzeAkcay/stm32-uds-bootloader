@@ -37,7 +37,6 @@ class Tester:
             self._tx(bytes([0x20 | (sn & 0x0F)]) + payload[pos:pos + 7])
             sn += 1
             pos += 7
-            time.sleep(0.001)
 
     def request(self, payload, timeout=1.0):
         while self.bus.recv(0) is not None:      # eski kareleri temizle

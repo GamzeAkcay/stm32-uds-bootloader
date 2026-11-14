@@ -137,7 +137,7 @@ This is the hard part of a bootloader — getting a real binary across CAN intac
 
 **Power-loss behavior is only partly tested.** Three scenarios were run once each (see [Power-loss testing](#power-loss-testing)). A power cut during the three metadata word writes themselves has not been tested on hardware.
 
-**Throughput is far below the bus capacity.** The cause is not yet established. The tester pauses 1 ms after every consecutive frame (9 per 64-byte block, about 9 of the roughly 14 ms measured per block), and STmin/BlockSize are not implemented. This has not yet been verified by removing the pause. See [Results](#results).
+**Throughput is far below the bus capacity.** Removing the tester's 1 ms pause after each consecutive frame improved it from 4.36 to 8.10 KB/s (n=5), so the pause was a large part of the problem but not all of it: about 7.7 ms per 64-byte block remain, against roughly 3 ms of bus time. The remaining overhead has not been measured yet (flow control and response waits, flash writes, tester latency). STmin/BlockSize are not implemented. See [Results](#results).
 
 ## Testing
 
@@ -160,12 +160,14 @@ Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN 
 | Metric                              | Value                          |
 |--------------------------------------|--------------------------------|
 | Firmware delivered over CAN          | 36 KB, verified via CRC32 (`0x40CD96D5`) |
-| Update time (mean ± std dev, n=5)    | 8.28 s ± 0.10 s                |
-| Throughput (mean, n=5)               | 4.36 KB/s                      |
+| Update time, with 1 ms pause per consecutive frame (mean +- std dev, n=5) | 8.28 s +- 0.10 s |
+| Update time, pause removed (mean +- std dev, n=5) | 4.46 s +- 0.05 s |
+| Throughput, with pause (mean, n=5) | 4.36 KB/s |
+| Throughput, pause removed (mean, n=5) | 8.10 KB/s |
 | Boot jump                            | 15/15 direct, 15/15 with CRC validation (ST-Link loaded) |
 | Recovery after power loss            | 3 scenarios, run once each: no jump to an incomplete image, recovery update succeeded (see [Power-loss testing](#power-loss-testing)) |
 
-Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame). The tester currently pauses 1 ms after every consecutive frame; with 9 consecutive frames per 64-byte block that is about 9 ms of the roughly 14 ms measured per block, so larger blocks alone would not remove it. This has not yet been verified by removing the pause, so the cause is still open.
+Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame). The first measurements (4.36 KB/s) were taken with a tester that paused 1 ms after every consecutive frame. Removing that pause gives 8.10 KB/s (runs: 4.4, 4.4, 4.5, 4.5, 4.5 s; the client prints 0.1 s resolution). About 7.7 ms per 64-byte block remain, against roughly 3 ms of bus time; where the rest goes has not been measured yet.
 
 ## Roadmap
 
@@ -184,7 +186,8 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 - [ ] Response pending (NRC 0x78) during flash erase, P2/P2* timing
 - [ ] Standard programming sequence and 0x27 SecurityAccess
 - [ ] ISO-TP multi-frame transmit
-- [ ] Throughput: remove the per-frame pause in the tester, measure round-trip latency, then increase TransferData block size
+- [x] Throughput: per-frame pause removed in the tester (4.36 -> 8.10 KB/s)
+- [ ] Throughput: locate the remaining per-block overhead (candump timing), then increase TransferData block size
 - [ ] Unit tests and CI beyond ISO-TP
 - [ ] Interoperability test against Linux can-isotp and udsoncan
 - [ ] Demo video
