@@ -139,7 +139,7 @@ This is the hard part of a bootloader — getting a real binary across CAN intac
 
 **No level shifting between the MCP2515 and the Raspberry Pi.** The MCP2515 module runs at 5 V, and its MISO and INT lines are connected directly to the Pi's 3.3 V GPIOs. A level shifter on these lines, or a 3.3 V-compatible CAN module, is planned.
 
-**Throughput is far below the bus capacity.** Removing the tester's 1 ms pause after each consecutive frame improved it from 4.36 to 8.10 KB/s (n=5), so the pause was a large part of the problem but not all of it: about 7.7 ms per 64-byte block remain, against roughly 3 ms of bus time. The remaining overhead has not been measured yet (flow control and response waits, flash writes, tester latency). STmin/BlockSize are not implemented. See [Results](#results).
+**Throughput is limited by flash erase and by gaps between frames.** Removing the tester's 1 ms pause after each consecutive frame improved the end-to-end rate from 4.36 to 8.10 KB/s (n=5). A candump capture of one update shows that about 2.0 s of the ~4.5 s total is flash erase after `0x34`. The TransferData phase itself averages ~4.2 ms per 64-byte block (~15 KB/s on its own), against roughly 3 ms of pure bus time for the 12 frames per block. STmin/BlockSize are not implemented. See [Results](#results).
 
 ## Testing
 
@@ -170,7 +170,7 @@ Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN 
 | End-to-end update over CAN + boot    | 20/20 (two rounds of 10), alternating two images (see below) |
 | Recovery after power loss            | 3 scenarios, run once each: no jump to an incomplete image, recovery update succeeded (see [Power-loss testing](#power-loss-testing)) |
 
-Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame). The first measurements (4.36 KB/s) were taken with a tester that paused 1 ms after every consecutive frame. Removing that pause gives 8.10 KB/s (runs: 4.4, 4.4, 4.5, 4.5, 4.5 s; the client prints 0.1 s resolution). About 7.7 ms per 64-byte block remain, against roughly 3 ms of bus time; where the rest goes has not been measured yet.
+Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame). The first measurements (4.36 KB/s) were taken with a tester that paused 1 ms after every consecutive frame. Removing that pause gives 8.10 KB/s (runs: 4.4, 4.4, 4.5, 4.5, 4.5 s; the client prints 0.1 s resolution). A candump capture of one update (6946 frames) shows where the rest goes: flash erase after `0x34` takes ~2.0 s of the total, and the TransferData phase averages ~4.2 ms per 64-byte block (12 frames per block), against roughly 3 ms of pure bus time. The remaining ~1 ms per block is waiting in the FirstFrame-to-FlowControl and FlowControl-to-first-ConsecutiveFrame gaps. These figures come from a single capture.
 
 **End-to-end test.** Two rounds of 10 consecutive updates over CAN alternated between two application images that blink the LED at different rates (200 ms and 1000 ms). After each update, the bootloader verified the CRC, reset, and the image that had just been sent was running (20/20). Update times were 4.0–4.5 s (8.1–8.9 KB/s), in line with the throughput above. Before the first round, two attempts timed out because the board was not reset within the client's wait window; they are not counted.
 
@@ -193,7 +193,7 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 - [ ] Standard programming sequence and 0x27 SecurityAccess
 - [ ] ISO-TP multi-frame transmit
 - [x] Throughput: per-frame pause removed in the tester (4.36 -> 8.10 KB/s)
-- [ ] Throughput: locate the remaining per-block overhead (candump timing), then increase TransferData block size
+- [ ] Throughput: reduce the per-block gaps (FirstFrame to FlowControl), then try larger TransferData blocks
 - [ ] Unit tests and CI beyond ISO-TP
 - [ ] Interoperability test against Linux can-isotp and udsoncan
 - [ ] Demo video
