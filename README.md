@@ -106,6 +106,8 @@ Limits of these tests:
 - SN65HVD230 3.3V CAN transceiver
 - MCP2515 CAN controller + transceiver module, Raspberry Pi 4B (UDS tester, SocketCAN, runs the update client)
 - CAN bus at 500 kbps
+- Common ground between the STM32 board and the Raspberry Pi
+- The MCP2515 module is powered from 5 V, so its MISO and INT outputs drive the Pi's 3.3 V GPIOs above their rated level. This works in the current setup but is out of spec; see [Known issues](#known-issues).
 
 ## Build and run
 
@@ -135,12 +137,14 @@ This is the hard part of a bootloader — getting a real binary across CAN intac
 
 **Power-loss behavior is only partly tested.** Three scenarios were run once each (see [Power-loss testing](#power-loss-testing)). A power cut during the three metadata word writes themselves has not been tested on hardware.
 
+**No level shifting between the MCP2515 and the Raspberry Pi.** The MCP2515 module runs at 5 V, and its MISO and INT lines are connected directly to the Pi's 3.3 V GPIOs. A level shifter on these lines, or a 3.3 V-compatible CAN module, is planned.
+
 **Throughput is far below the bus capacity.** Removing the tester's 1 ms pause after each consecutive frame improved it from 4.36 to 8.10 KB/s (n=5), so the pause was a large part of the problem but not all of it: about 7.7 ms per 64-byte block remain, against roughly 3 ms of bus time. The remaining overhead has not been measured yet (flow control and response waits, flash writes, tester latency). STmin/BlockSize are not implemented. See [Results](#results).
 
 ## Testing
 
 - **Unit tests:** ISO-TP receive path only (`bootloader/tests/test_isotp.c`, runs on host via gcc with a mock CAN send).
-- **Hardware tests:** full UDS/flash/CRC pipeline manually verified multiple times with real firmware images (see above); boot jump and CRC validation verified as described in [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix). No automated hardware-in-the-loop tests yet.
+- **Hardware tests:** full UDS/flash/CRC pipeline manually verified multiple times with real firmware images (see above); boot jump and CRC validation verified as described in [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix); 10 consecutive end-to-end updates over CAN (see [Results](#results)); three power-loss scenarios (see [Power-loss testing](#power-loss-testing)). No automated hardware-in-the-loop tests yet.
 - **CI:** none yet.
 
 ## Results
@@ -182,6 +186,7 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 - [x] Reliable jump from bootloader to application — root cause found and fixed
 - [x] End-to-end retest with CAN-delivered images (10/10)
 - [x] Power-loss test: cut power during erase and during data transfer; simulated stop before CRC verification (see [Power-loss testing](#power-loss-testing))
+- [ ] Level shifter (or 3.3 V CAN module) between the MCP2515 and the Raspberry Pi
 - [ ] Respond with NRC 0x11 for unsupported services
 - [ ] UDS session manager with S3 timeout and 0x3E TesterPresent
 - [ ] Response pending (NRC 0x78) during flash erase, P2/P2* timing
