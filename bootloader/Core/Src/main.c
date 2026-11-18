@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define APP_ADDRESS 0x08008000U
+#define APP_VECTOR_TABLE_ADDR 0x08008000U
 #define BOOT_WINDOW_MS 2000U
 /* USER CODE END PD */
 
@@ -468,8 +468,8 @@ void JumpToApplication(void) {
 	}
 
 	/* Değerleri en başta oku, stack değişmeden önce */
-	uint32_t appStack = *(volatile uint32_t*) APP_ADDRESS;
-	uint32_t appEntry = *(volatile uint32_t*) (APP_ADDRESS + 4U);
+	uint32_t appStack = *(volatile uint32_t*) APP_VECTOR_TABLE_ADDR;
+	uint32_t appEntry = *(volatile uint32_t*) (APP_VECTOR_TABLE_ADDR + 4U);
 
 	__disable_irq();
 
@@ -494,7 +494,7 @@ void JumpToApplication(void) {
 	__HAL_FLASH_INSTRUCTION_CACHE_ENABLE();
 	__HAL_FLASH_DATA_CACHE_ENABLE();
 
-	SCB->VTOR = APP_ADDRESS;
+	SCB->VTOR = APP_VECTOR_TABLE_ADDR;
 	__DSB();
 	__ISB();
 
