@@ -2,7 +2,7 @@
 
 A CAN bootloader for STM32F407 implementing UDS (ISO 14229-1) over ISO-TP (ISO 15765-2) for firmware updates, written from scratch (no third-party ISO-TP/UDS libraries).
 
-> **Status:** the firmware update pipeline works end-to-end on real hardware, and the previously unreliable boot jump has been root-caused and fixed (see [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix)). Power-loss behavior was tested in three scenarios (see [Power-loss testing](#power-loss-testing)). A repeated end-to-end test with CAN-delivered images passed 10/10 (see [Results](#results)).
+> **Status:** the firmware update pipeline works end-to-end on real hardware, and the previously unreliable boot jump has been root-caused and fixed (see [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix)). Power-loss behavior was tested in three scenarios (see [Power-loss testing](#power-loss-testing)). A repeated end-to-end test with CAN-delivered images passed 20/20 (see [Results](#results)).
 
 ## Why this project
 
@@ -144,7 +144,7 @@ This is the hard part of a bootloader — getting a real binary across CAN intac
 ## Testing
 
 - **Unit tests:** ISO-TP receive path only (`bootloader/tests/test_isotp.c`, runs on host via gcc with a mock CAN send).
-- **Hardware tests:** full UDS/flash/CRC pipeline manually verified multiple times with real firmware images (see above); boot jump and CRC validation verified as described in [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix); 10 consecutive end-to-end updates over CAN (see [Results](#results)); three power-loss scenarios (see [Power-loss testing](#power-loss-testing)). No automated hardware-in-the-loop tests yet.
+- **Hardware tests:** full UDS/flash/CRC pipeline manually verified multiple times with real firmware images (see above); boot jump and CRC validation verified as described in [Boot jump: root cause and fix](#boot-jump-root-cause-and-fix); 20 end-to-end updates over CAN (see [Results](#results)); three power-loss scenarios (see [Power-loss testing](#power-loss-testing)). No automated hardware-in-the-loop tests yet.
 - **CI:** none yet.
 
 ## Results
@@ -167,12 +167,12 @@ Measured on the hardware setup above: STM32F407G-DISC1 ↔ Raspberry Pi 4B, CAN 
 | Throughput, with pause (mean, n=5) | 4.36 KB/s |
 | Throughput, pause removed (mean, n=5) | 8.10 KB/s |
 | Boot jump                            | 15/15 direct, 15/15 with CRC validation (ST-Link loaded) |
-| End-to-end update over CAN + boot    | 10/10, alternating two images (see below) |
+| End-to-end update over CAN + boot    | 20/20 (two rounds of 10), alternating two images (see below) |
 | Recovery after power loss            | 3 scenarios, run once each: no jump to an incomplete image, recovery update succeeded (see [Power-loss testing](#power-loss-testing)) |
 
 Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is roughly 26 KB/s (7 payload bytes per consecutive frame). The first measurements (4.36 KB/s) were taken with a tester that paused 1 ms after every consecutive frame. Removing that pause gives 8.10 KB/s (runs: 4.4, 4.4, 4.5, 4.5, 4.5 s; the client prints 0.1 s resolution). About 7.7 ms per 64-byte block remain, against roughly 3 ms of bus time; where the rest goes has not been measured yet.
 
-**End-to-end test.** 10 consecutive updates over CAN alternated between two application images that blink the LED at different rates (200 ms and 1000 ms). After each update, the bootloader verified the CRC, reset, and the image that had just been sent was running (10/10). Update times were 4.3–4.5 s (8.1–8.3 KB/s), matching the throughput above. Two earlier attempts timed out because the board was not reset within the client's wait window; they are not counted.
+**End-to-end test.** Two rounds of 10 consecutive updates over CAN alternated between two application images that blink the LED at different rates (200 ms and 1000 ms). After each update, the bootloader verified the CRC, reset, and the image that had just been sent was running (20/20). Update times were 4.0–4.5 s (8.1–8.9 KB/s), in line with the throughput above. Before the first round, two attempts timed out because the board was not reset within the client's wait window; they are not counted.
 
 ## Roadmap
 
@@ -184,7 +184,7 @@ Throughput is low relative to the 500 kbps bus. ISO-TP's practical ceiling is ro
 - [x] Python update client
 - [x] Measurements — throughput/timing (5 runs)
 - [x] Reliable jump from bootloader to application — root cause found and fixed
-- [x] End-to-end retest with CAN-delivered images (10/10)
+- [x] End-to-end retest with CAN-delivered images (20/20)
 - [x] Power-loss test: cut power during erase and during data transfer; simulated stop before CRC verification (see [Power-loss testing](#power-loss-testing))
 - [ ] Level shifter (or 3.3 V CAN module) between the MCP2515 and the Raspberry Pi
 - [ ] Respond with NRC 0x11 for unsupported services
